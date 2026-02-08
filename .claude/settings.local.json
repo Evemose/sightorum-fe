@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__idea__list_directory_tree",
+      "mcp__idea__get_file_text_by_path",
+      "Bash(npm install:*)",
+      "Bash(npm run postinstall:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(timeout 15 npm run dev:*)",
+      "mcp__idea__search_in_files_by_text",
+      "mcp__idea__find_files_by_name_keyword",
+      "Bash(echo:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 20 npm run dev:*)",
+      "Bash(npx nuxi typecheck:*)",
+      "mcp__idea__search_in_files_by_regex",
+      "mcp__backend__search_in_files_by_text",
+      "mcp__backend__find_files_by_name_keyword",
+      "mcp__backend__get_file_text_by_path"
+    ]
+  }
+}
