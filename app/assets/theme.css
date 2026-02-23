@@ -1,0 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
+
+:root {
+  --app-font-body: 'Manrope', 'Segoe UI', sans-serif;
+  --app-font-display: 'Chakra Petch', 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#__nuxt {
+  height: 100%;
+}
+
+body {
+  font-family: var(--app-font-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+.logo-mark,
+.hero-title,
+.workspace-title {
+  font-family: var(--app-font-display);
+}

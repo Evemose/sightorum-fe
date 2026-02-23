@@ -83,7 +83,7 @@
           </template>
 
           <Column
-            v-for="col in queryResult.columns"
+            v-for="col in queryColumns"
             :key="col"
             :field="col"
             :header="col"
@@ -118,6 +118,11 @@ const schema = route.params.schema as string
 const { queryResult, loading, error, executeQuery } = useDatasets()
 
 const query = ref('')
+
+const queryColumns = computed(() => {
+  if (!queryResult.value?.rows.length) return []
+  return Object.keys(queryResult.value.rows[0]!)
+})
 
 function formatNumber(num: number): string {
   return new Intl.NumberFormat().format(num)

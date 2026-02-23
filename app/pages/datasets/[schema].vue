@@ -203,7 +203,7 @@ watch(sampleLimit, () => {
 onMounted(async () => {
   await fetchDataset(schema)
   if (currentDataset.value?.tables?.length) {
-    selectTable(currentDataset.value.tables[0].tableName)
+    selectTable(currentDataset.value.tables[0]!.tableName)
   }
 })
 </script>

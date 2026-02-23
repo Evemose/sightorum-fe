@@ -149,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DetectedSchemaResponse, DetectionOverride, SchemaOverride, HierarchicalOverride, SimpleDataType } from '~/types/schemas'
+import type { DetectedSchemaResponse, DetectionOverride, HierarchicalOverride, SimpleDataType } from '~/types/schemas'
 import EditableAttributeNode from './EditableAttributeNode.vue'
 import BaseSchemaTree from './BaseSchemaTree.vue'
 import Button from 'primevue/button'

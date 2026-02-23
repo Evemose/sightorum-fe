@@ -10,9 +10,9 @@
             </div>
             <div>
               <div class="text-2xl font-bold text-surface-800 dark:text-surface-100">
-                {{ stats.chatSessions }}
+                {{ stats.researches }}
               </div>
-              <div class="text-sm text-surface-500">Chat Sessions</div>
+              <div class="text-sm text-surface-500">Researches</div>
             </div>
           </div>
         </template>
@@ -73,7 +73,7 @@
       <template #content>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <NuxtLink to="/chat">
-            <Button label="New Chat" icon="pi pi-plus" class="w-full" />
+            <Button label="New Research" icon="pi pi-plus" class="w-full" />
           </NuxtLink>
           <NuxtLink to="/import">
             <Button label="Import Data" icon="pi pi-upload" severity="secondary" class="w-full" />
@@ -91,10 +91,10 @@
     <!-- Recent Activity -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card class="shadow-sm">
-        <template #title>Recent Chat Sessions</template>
+        <template #title>Recent Researches</template>
         <template #content>
           <div v-if="recentSessions.length === 0" class="text-center text-surface-500 py-4">
-            No recent sessions
+            No recent researches
           </div>
           <div v-else class="space-y-3">
             <div
@@ -106,7 +106,7 @@
                 <Tag :value="session.status" :severity="getSessionStatusSeverity(session.status)" />
                 <span class="font-medium">{{ session.schemaName }}</span>
               </div>
-              <NuxtLink :to="`/chat/${session.id}`">
+              <NuxtLink to="/chat">
                 <Button icon="pi pi-arrow-right" text rounded size="small" />
               </NuxtLink>
             </div>
@@ -150,13 +150,13 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressBar from 'primevue/progressbar'
 
-const { sessions, fetchSessions } = useChat()
+const { researches: sessions, fetchResearches: fetchSessions } = useResearch()
 const { jobs, fetchJobs } = useImport()
 const { datasets, fetchDatasets } = useDatasets()
 const { metamodels, fetchMetamodels } = useMetamodels()
 
 const stats = computed(() => ({
-  chatSessions: sessions.value.length,
+  researches: sessions.value.length,
   datasets: datasets.value.length,
   imports: jobs.value.length,
   metamodels: metamodels.value.length
@@ -176,7 +176,7 @@ const recentJobs = computed(() =>
 
 function getSessionStatusSeverity(status: string) {
   switch (status) {
-    case 'ACTIVE': return 'info'
+    case 'IN_PROGRESS': return 'info'
     case 'COMPLETED': return 'success'
     case 'FAILED': return 'danger'
     default: return 'secondary'

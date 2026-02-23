@@ -4,11 +4,8 @@ import {
     DetectedSchemaResponseSchema,
     type ImportJobResponse,
     ImportJobResponseSchema,
-    type ImportProgressEventData,
     ImportProgressEventSchema,
-    type ImportJobCompleteEvent,
     ImportJobCompleteEventSchema,
-    type ImportErrorEvent,
     ImportErrorEventSchema,
     type PreviewResponse,
     PreviewResponseSchema,
@@ -19,18 +16,18 @@ import {
     type ImportProgressEvent
 } from '~/types/schemas'
 
-export interface DetectSchemaRequest {
+interface DetectSchemaRequest {
     uploadId: string
     listSeparator?: string
 }
 
-export interface PreviewRequest {
+interface PreviewRequest {
     uploadId: string
     targetSchema: string
     overridesByRoot?: Record<string, DetectionOverride[]>
 }
 
-export interface StartImportRequest {
+interface StartImportRequest {
     uploadId: string
     targetSchema: string
     chunkSize?: number

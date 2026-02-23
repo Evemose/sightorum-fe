@@ -1,145 +1,97 @@
 import { z } from 'zod'
 
 // ============================================================================
-// Chat Schemas
+// Research Schemas
 // ============================================================================
 
-export const ChatSessionSchema = z.object({
-  id: z.uuid(),
-  status: z.string(),
-  schemaName: z.string(),
-  parentSessionId: z.uuid().nullable(),
+export const StepRefSchema = z.object({
+  branchId: z.string(),
+  stepId: z.string()
+})
+
+export const ResearchScoutStructuralInfoSchema = z.object({
+  type: z.literal('SCOUT'),
+  nodeId: z.string()
+})
+
+export const ResearchPlanStructuralInfoSchema = z.object({
+  type: z.literal('PLAN'),
+  nodeId: z.string()
+})
+
+export const ResearchBranchStructuralInfoSchema = z.object({
+  type: z.literal('BRANCH'),
+  nodeId: z.string(),
+  branchId: z.string()
+})
+
+export const ResearchStepStructuralInfoSchema = z.object({
+  type: z.literal('STEP'),
+  nodeId: z.string(),
+  branchId: z.string(),
+  stepId: z.string(),
+  previousStepId: z.string().nullable(),
+  dependencyRefs: z.array(StepRefSchema)
+})
+
+export const ResearchAnalysisStructuralInfoSchema = z.object({
+  type: z.literal('ANALYSIS'),
+  nodeId: z.string()
+})
+
+export const ResearchNodeStructuralInfoSchema = z.union([
+  ResearchScoutStructuralInfoSchema,
+  ResearchPlanStructuralInfoSchema,
+  ResearchBranchStructuralInfoSchema,
+  ResearchStepStructuralInfoSchema,
+  ResearchAnalysisStructuralInfoSchema
+])
+
+export const ResearchPendingNodeSchema = z.object({
+  status: z.literal('PENDING'),
+  nodeType: z.enum(['SCOUT', 'PLAN', 'BRANCH', 'STEP', 'ANALYSIS']),
+  structural: ResearchNodeStructuralInfoSchema,
+  dependencyIds: z.array(z.string().uuid()),
+  startedAt: z.iso.datetime()
+})
+
+export const ResearchCompletedNodeSchema = z.object({
+  status: z.literal('COMPLETED'),
+  id: z.string().uuid(),
+  nodeType: z.enum(['SCOUT', 'PLAN', 'BRANCH', 'STEP', 'ANALYSIS']),
+  structural: ResearchNodeStructuralInfoSchema,
+  dependencyIds: z.array(z.string().uuid()),
+  payload: z.record(z.string(), z.unknown()),
+  rawResponse: z.string(),
   createdAt: z.iso.datetime()
 })
 
-export const ForkPointSchema = z.object({
-  afterNodeId: z.uuid(),
-  reason: z.string()
+export const ResearchFailedNodeSchema = z.object({
+  status: z.literal('FAILED'),
+  id: z.string().uuid(),
+  nodeType: z.enum(['SCOUT', 'PLAN', 'BRANCH', 'STEP', 'ANALYSIS']),
+  structural: ResearchNodeStructuralInfoSchema,
+  dependencyIds: z.array(z.string().uuid()),
+  errorMessage: z.string(),
+  createdAt: z.iso.datetime()
 })
 
-// ChatNodeDTO is a sealed interface without @JsonTypeInfo
-// We detect type based on field presence
-export const ChatMessageNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  text: z.string(),
-  sender: z.enum(['USER', 'ASSISTANT', 'SYSTEM'])
-})
-
-export const ChatToolCallNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  description: z.string(),
-  response: z.record(z.string(), z.unknown())
-})
-
-export const ChatTrainingQueuedNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  trainingId: z.uuid(),
-  modelName: z.string()
-})
-
-export const ChatTrainingStartedNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  trainingId: z.uuid()
-})
-
-export const ChatTrainingProgressNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  trainingId: z.uuid(),
-  progressPercentage: z.number()
-})
-
-export const ChatTrainingFinishedNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  trainingId: z.uuid(),
-  metrics: z.record(z.string(), z.unknown())
-})
-
-export const ChatFailureNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  reason: z.string(),
-  errorMessage: z.string()
-})
-
-// ResearchStep for AgentSubconclusion
-export const ResearchStepSchema = z.object({
-  reasoning: z.string(),
-  action: z.string(),
-  observation: z.string()
-})
-
-export const ChatAgentSubconclusionNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  summary: z.string(),
-  keyInsight: z.string(),
-  details: z.string(),
-  researchSteps: z.array(ResearchStepSchema),
-  conversationId: z.string()
-})
-
-export const ChatForkedNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  forkPointId: z.uuid(),
-  reason: z.string(),
-  furtherInstructions: z.string()
-})
-
-export const ChatTemporaryNodeSchema = z.object({
-  id: z.uuid(),
-  createdAt: z.iso.datetime(),
-  inProgressContent: z.string()
-})
-
-// ChatNodeDTO union - detect type based on unique fields
-// Message: text, sender
-// ToolCall: description, response
-// TrainingQueued: trainingId, modelName (no progressPercentage, no metrics)
-// TrainingStarted: trainingId only (no modelName, no progressPercentage, no metrics)
-// TrainingProgress: trainingId, progressPercentage (no metrics, no modelName)
-// TrainingFinished: trainingId, metrics (no progressPercentage, no modelName)
-// Failure: reason, errorMessage
-// AgentSubconclusion: summary, details, researchSteps, conversationId
-// Forked: forkPointId, reason, furtherInstructions
-// Temporary: inProgressContent
-export const ChatNodeSchema = z.union([
-  ChatMessageNodeSchema,
-  ChatToolCallNodeSchema,
-  ChatTrainingQueuedNodeSchema,
-  ChatTrainingStartedNodeSchema,
-  ChatTrainingProgressNodeSchema,
-  ChatTrainingFinishedNodeSchema,
-  ChatFailureNodeSchema,
-  ChatAgentSubconclusionNodeSchema,
-  ChatForkedNodeSchema,
-  ChatTemporaryNodeSchema
+export const ResearchNodeSchema = z.union([
+  ResearchPendingNodeSchema,
+  ResearchCompletedNodeSchema,
+  ResearchFailedNodeSchema
 ])
 
-// ChatBranchDTO is recursive (children contains ChatBranchDTO[])
-type ChatBranchDTO = {
-  sessionId: string
-  status: string
-  forkPoint: { afterNodeId: string; reason: string } | null
-  nodes: z.infer<typeof ChatNodeSchema>[]
-  children: ChatBranchDTO[]
-}
+export const ResearchResponseSchema = z.object({
+  id: z.string().uuid(),
+  swarmId: z.string(),
+  schemaName: z.string(),
+  status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED']),
+  nodes: z.array(ResearchNodeSchema),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime()
+})
 
-export const ChatBranchSchema: z.ZodType<ChatBranchDTO> = z.lazy(() =>
-  z.object({
-    sessionId: z.uuid(),
-    status: z.string(),
-    forkPoint: ForkPointSchema.nullable(),
-    nodes: z.array(ChatNodeSchema),
-    children: z.array(ChatBranchSchema)
-  })
-)
 // ============================================================================
 // Dataset Schemas
 // ============================================================================
@@ -448,7 +400,8 @@ export const ChunkFailedEventSchema = z.object({
   type: z.literal('chunk_failed'),
   chunkNumber: z.number(),
   errorMessage: z.string(),
-  timestamp: z.string()
+  timestamp: z.string(),
+  warnings: z.never()
 })
 
 export const LatestEventSchema = z.discriminatedUnion('type', [
@@ -673,20 +626,13 @@ export const ModelSpaceResponseSchema = z.object({
 // Type exports from schemas
 // ============================================================================
 
-export type ChatSession = z.infer<typeof ChatSessionSchema>
-export type ChatNode = z.infer<typeof ChatNodeSchema>
-export type ChatMessageNode = z.infer<typeof ChatMessageNodeSchema>
-export type ChatToolCallNode = z.infer<typeof ChatToolCallNodeSchema>
-export type ChatTrainingQueuedNode = z.infer<typeof ChatTrainingQueuedNodeSchema>
-export type ChatTrainingStartedNode = z.infer<typeof ChatTrainingStartedNodeSchema>
-export type ChatTrainingProgressNode = z.infer<typeof ChatTrainingProgressNodeSchema>
-export type ChatTrainingFinishedNode = z.infer<typeof ChatTrainingFinishedNodeSchema>
-export type ChatFailureNode = z.infer<typeof ChatFailureNodeSchema>
-export type ChatAgentSubconclusionNode = z.infer<typeof ChatAgentSubconclusionNodeSchema>
-export type ChatForkedNode = z.infer<typeof ChatForkedNodeSchema>
-export type ChatTemporaryNode = z.infer<typeof ChatTemporaryNodeSchema>
-
-export type ChatBranch = z.infer<typeof ChatBranchSchema>
+export type StepRef = z.infer<typeof StepRefSchema>
+export type ResearchNodeStructuralInfo = z.infer<typeof ResearchNodeStructuralInfoSchema>
+export type ResearchPendingNode = z.infer<typeof ResearchPendingNodeSchema>
+export type ResearchCompletedNode = z.infer<typeof ResearchCompletedNodeSchema>
+export type ResearchFailedNode = z.infer<typeof ResearchFailedNodeSchema>
+export type ResearchNode = z.infer<typeof ResearchNodeSchema>
+export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
 
 export type TableInfo = z.infer<typeof TableInfoSchema>
 export type DatasetInfo = z.infer<typeof DatasetInfoSchema>

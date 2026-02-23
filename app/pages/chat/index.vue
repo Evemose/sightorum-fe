@@ -1,80 +1,116 @@
-﻿<template>
-  <div class="chat-page h-full flex gap-6">
-    <!-- Session List Sidebar -->
-    <div class="w-80 flex-shrink-0">
-      <Card class="h-full">
-        <template #content>
-          <ChatSessionList
-              :sessions="sessions"
-              :selected-id="selectedSession?.id"
-              :loading="loading"
-              @select="handleSelectSession"
-              @create="handleCreateSession"
-              @delete="handleDeleteSession"
+<template>
+  <section class="space-y-5">
+    <header class="rounded-2xl bg-[radial-gradient(120%_140%_at_0%_0%,rgb(251_191_36_/_0.2),transparent_55%),radial-gradient(100%_120%_at_100%_100%,rgb(14_116_144_/_0.18),transparent_58%),linear-gradient(140deg,rgb(15_23_42_/_0.92),rgb(30_41_59_/_0.9))] p-6 text-slate-50 md:p-8">
+      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="mb-1 text-[0.72rem] uppercase tracking-[0.16em] text-amber-300">Research Hub</p>
+          <h2 class="text-[clamp(1.6rem,2vw,2.2rem)] font-bold leading-[1.1]">Map your next inquiry.</h2>
+          <p class="mt-2 text-slate-200">Launch runs, track progress, and open the full DAG workspace.</p>
+        </div>
+        <Button label="New Research" icon="pi pi-plus" size="small" @click="showResearchDialog = true" />
+      </div>
+    </header>
+
+    <Card>
+      <template #content>
+        <div v-if="loading" class="flex justify-center py-10">
+          <ProgressSpinner style="width: 44px; height: 44px" />
+        </div>
+
+        <div v-else-if="researches.length === 0" class="text-center py-12 text-surface-500">
+          No research runs yet.
+        </div>
+
+        <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <article
+            v-for="research in researches"
+            :key="research.id"
+            class="rounded-xl border border-surface-200 bg-white/90 dark:bg-primary-500/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-surface-700 dark:bg-surface-800/70"
+          >
+            <div class="mb-3 flex items-start justify-between gap-2">
+              <h3 class="line-clamp-1 text-sm font-semibold">{{ research.schemaName }}</h3>
+              <Tag :value="research.status" :severity="getStatusSeverity(research.status)" />
+            </div>
+            <p class="mb-1 text-xs text-surface-500">{{ formatDate(research.createdAt) }}</p>
+            <p class="mb-4 break-all text-xs text-surface-500">{{ research.id }}</p>
+            <Button
+              label="Open Workspace"
+              icon="pi pi-arrow-right"
+              size="small"
+              class="w-full"
+              @click="openResearch(research.id)"
+            />
+          </article>
+        </div>
+      </template>
+    </Card>
+
+    <Dialog
+      v-model:visible="showResearchDialog"
+      header="Start Research"
+      :style="{ width: '560px' }"
+      modal
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="mb-2 block font-medium">Schema Name</label>
+          <InputText v-model="newSchemaName" class="w-full" placeholder="e.g. sales_analytics" />
+        </div>
+        <div>
+          <label class="mb-2 block font-medium">Research Query</label>
+          <Textarea
+            v-model="newQuery"
+            rows="6"
+            class="w-full"
+            placeholder="What would you like to research?"
           />
-        </template>
-      </Card>
-    </div>
-    <!-- Chat Area -->
-    <div class="flex-1 flex flex-col">
-      <template v-if="selectedSession">
-        <!-- Chat Tree -->
-        <Card class="flex-1 mb-4 overflow-hidden">
-          <template #title>
-            <div class="flex items-center gap-3">
-              <span>{{ selectedSession.schemaName }}</span>
-              <Tag :value="selectedSession.status" :severity="getStatusSeverity(selectedSession.status)"/>
-            </div>
-          </template>
-          <template #content>
-            <ChatTree :tree="chatTree" />
-          </template>
-        </Card>
-        <!-- Message Input -->
-        <ChatInput
-            :disabled="selectedSession.status !== 'ACTIVE'"
-            :show-correction="selectedSession.status === 'ACTIVE'"
-            @send="handleSendMessage"
-            @interrupt="handleInterrupt"
-        />
-      </template>
-      <template v-else>
-        <Card class="flex-1 flex items-center justify-center">
-          <template #content>
-            <div class="text-center text-surface-500">
-              <i class="pi pi-comments text-6xl mb-4"/>
-              <p class="text-lg">Select a session or create a new one</p>
-            </div>
-          </template>
-        </Card>
-      </template>
-    </div>
-  </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" severity="secondary" @click="showResearchDialog = false" />
+          <Button label="Start Mock" severity="info" icon="pi pi-bolt" @click="handleCreateResearch(true)" />
+          <Button
+            label="Start Research"
+            severity="success"
+            icon="pi pi-play"
+            :disabled="!canStartResearch"
+            @click="handleCreateResearch(false)"
+          />
+        </div>
+      </div>
+    </Dialog>
+  </section>
 </template>
+
 <script setup lang="ts">
-import type {ChatSession} from '~/types/schemas'
+import Button from 'primevue/button'
 import Card from 'primevue/card'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
-import {useToast} from 'primevue/usetoast'
+import Textarea from 'primevue/textarea'
+import { useToast } from 'primevue/usetoast'
+
 const toast = useToast()
+const router = useRouter()
+
 const {
-  sessions,
-  chatTree,
+  researches,
   loading,
   error,
-  fetchSessions,
-  createSession,
-  deleteSession,
-  fetchChatTree,
-  sendMessage,
-  sendCorrection,
-  subscribeToTreeUpdates
-} = useChat()
-const selectedSession = ref<ChatSession | null>(null)
-let unsubscribe: (() => void) | null = null
-function getStatusSeverity(status: string) {
+  fetchResearches,
+  startResearch,
+} = useResearch()
+
+const showResearchDialog = ref(false)
+const newSchemaName = ref('')
+const newQuery = ref('')
+
+const canStartResearch = computed(() => newSchemaName.value.trim().length > 0 && newQuery.value.trim().length > 0)
+
+function getStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
   switch (status) {
-    case 'ACTIVE':
+    case 'IN_PROGRESS':
       return 'info'
     case 'COMPLETED':
       return 'success'
@@ -84,120 +120,46 @@ function getStatusSeverity(status: string) {
       return 'secondary'
   }
 }
-async function handleSelectSession(session: ChatSession) {
-  if (unsubscribe) {
-    unsubscribe()
-    unsubscribe = null
-  }
-  selectedSession.value = session
-  await fetchChatTree(session.id)
-  if (session.status === 'ACTIVE') {
-    unsubscribe = subscribeToTreeUpdates(session.id, (event) => {
-      if (event.type === 'node' && chatTree.value) {
-        // Add new node to the root branch and trigger reactivity
-        const updatedNodes = [...chatTree.value.nodes, event.node]
-        chatTree.value = {
-          ...chatTree.value,
-          nodes: updatedNodes
-        }
-      } else if (event.type === 'node-update' && chatTree.value) {
-        // Update existing node in the root branch
-        const nodeIndex = chatTree.value.nodes.findIndex(n => n.id === event.node.id)
-        if (nodeIndex !== -1) {
-          const updatedNodes = [...chatTree.value.nodes]
-          updatedNodes[nodeIndex] = event.node
-          chatTree.value = {
-            ...chatTree.value,
-            nodes: updatedNodes
-          }
-        }
-      } else if (event.type === 'node-deleted' && chatTree.value) {
-        // Remove deleted node from the root branch
-        const updatedNodes = chatTree.value.nodes.filter(n => n.id !== event.nodeId)
-        chatTree.value = {
-          ...chatTree.value,
-          nodes: updatedNodes
-        }
-      } else if (event.type === 'status') {
-        // Update session status
-        if (selectedSession.value && selectedSession.value.id === event.sessionId) {
-          selectedSession.value.status = event.status
-        }
-        // Also update in sessions list
-        const idx = sessions.value.findIndex(s => s.id === event.sessionId)
-        if (idx !== -1) {
-          sessions.value[idx]!.status = event.status
-        }
-      } else if (event.type === 'complete') {
-        console.log('Stream completed for session:', session.id)
-      } else if (event.type === 'error') {
-        toast.add({
-          severity: 'error',
-          summary: 'Stream Error',
-          detail: event.message,
-          life: 5000
-        })
-      }
-    })
-  }
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleString()
 }
-async function handleCreateSession(schemaName: string) {
-  const session = await createSession({schemaName})
-  if (session) {
-    toast.add({
-      severity: 'success',
-      summary: 'Session Created',
-      detail: `Chat session for ${schemaName} created`,
-      life: 3000
-    })
-    await handleSelectSession(session)
-  }
+
+async function openResearch(id: string) {
+  await router.push(`/chat/${id}`)
 }
-async function handleDeleteSession(session: ChatSession) {
-  await deleteSession(session.id)
-  if (selectedSession.value?.id === session.id) {
-    selectedSession.value = null
-  }
+
+async function handleCreateResearch(mock: boolean) {
+  if (!canStartResearch.value) return
+  const created = await startResearch({
+    schemaName: newSchemaName.value.trim(),
+    query: newQuery.value.trim(),
+    mock,
+  })
+  if (!created) return
+
+  showResearchDialog.value = false
+  newSchemaName.value = ''
+  newQuery.value = ''
   toast.add({
-    severity: 'info',
-    summary: 'Session Deleted',
-    life: 3000
+    severity: 'success',
+    summary: 'Research Started',
+    detail: `${created.schemaName} research created`,
+    life: 3000,
   })
+
+  await openResearch(created.id)
 }
-async function handleSendMessage(message: string) {
-  if (!selectedSession.value) return
-  await sendMessage(selectedSession.value.id, {message})
-}
-async function handleInterrupt(message: string) {
-  if (!selectedSession.value || !chatTree.value) return
-  // TODO: Implement proper node selection UI for corrections
-  // For now, we'll insert before the last node in the root branch
-  const lastNode = chatTree.value.nodes[chatTree.value.nodes.length - 1]
-  if (!lastNode) {
-    console.warn('No nodes in chat tree to correct')
-    return
-  }
-  await sendCorrection(selectedSession.value.id, {
-    beforeNodeId: lastNode.id,
-    message: message || 'Stop current operation'
+
+onMounted(fetchResearches)
+
+watch(error, (value) => {
+  if (!value) return
+  toast.add({
+    severity: 'error',
+    summary: 'Error',
+    detail: value,
+    life: 5000,
   })
-}
-onMounted(() => {
-  fetchSessions()
-})
-onUnmounted(() => {
-  if (unsubscribe) {
-    unsubscribe()
-  }
-})
-watch(error, (newError) => {
-  if (newError) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: newError,
-      life: 5000
-    })
-  }
 })
 </script>

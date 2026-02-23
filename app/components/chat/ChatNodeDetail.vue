@@ -1,343 +1,231 @@
 <template>
-  <div class="chat-node-detail">
-    <!-- Header -->
-    <div class="flex items-center gap-3 mb-3">
-      <div
-        class="w-8 h-8 rounded-full flex items-center justify-center"
-        :class="headerClass"
-      >
-        <i :class="headerIcon" />
-      </div>
-      <div>
-        <div class="font-semibold text-surface-800 dark:text-surface-100">
-          {{ headerTitle }}
-        </div>
-        <div class="text-xs text-surface-500">
-          {{ formatTime(node.createdAt) }}
-        </div>
-      </div>
+  <div class="space-y-4">
+    <div class="flex items-center gap-2">
+      <Tag :value="node.nodeType" />
+      <Tag :value="node.status" :severity="statusSeverity" />
+      <span class="text-xs text-surface-500">{{ formatTime(node.createdAt) }}</span>
     </div>
 
-    <!-- Content based on type -->
-    <div class="text-sm text-surface-600 dark:text-surface-300">
-      <!-- Message -->
-      <template v-if="'sender' in node && 'text' in node">
-        <div class="bg-surface-100 dark:bg-surface-700 rounded-lg p-3 max-h-48 overflow-y-auto">
-          <pre class="whitespace-pre-wrap font-sans">{{ node.text }}</pre>
+    <div class="text-xs text-surface-500 break-all">{{ node.structuralNodeId }}</div>
+
+    <template v-if="node.rawNode.status === 'PENDING'">
+      <div class="space-y-3">
+        <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded p-3">
+          Processing in progress.
         </div>
+        <div v-if="hasLiveOutput" class="rounded p-3 bg-slate-950/90">
+          <div class="text-[11px] uppercase tracking-wide text-slate-300 mb-1">Live output</div>
+          <pre class="text-xs whitespace-pre-wrap text-slate-100 max-h-64 overflow-auto">{{ liveOutput }}</pre>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="node.rawNode.status === 'FAILED'">
+      <div class="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded p-3">
+        {{ node.rawNode.errorMessage }}
+      </div>
+    </template>
+
+    <template v-else>
+      <div v-if="snapshotText" class="bg-surface-100 dark:bg-surface-700 rounded p-3">
+        <div class="text-xs font-medium text-surface-500 mb-1">Snapshot</div>
+        <div class="text-sm whitespace-pre-wrap">{{ snapshotText }}</div>
+      </div>
+
+      <template v-if="node.rawNode.nodeType === 'SCOUT'">
+        <section class="space-y-3">
+          <h4 class="font-semibold">Scout Overview</h4>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div>Complexity</div><div class="font-medium">{{ asString(scoutPayload?.complexity) }}</div>
+          </div>
+          <div>
+            <div class="font-medium mb-1">Patterns</div>
+            <ul class="list-disc pl-5 text-sm">
+              <li v-for="(item, i) in asStringArray(scoutPayload?.patterns)" :key="i">{{ item }}</li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-medium mb-1">Recommendations</div>
+            <ul class="list-disc pl-5 text-sm">
+              <li v-for="(item, i) in asStringArray(scoutPayload?.recommendations)" :key="i">{{ item }}</li>
+            </ul>
+          </div>
+        </section>
       </template>
 
-      <!-- Tool Call -->
-      <template v-else-if="'description' in node && 'response' in node">
-        <div class="space-y-2">
-          <div class="font-medium">{{ node.description }}</div>
-          <div class="bg-surface-100 dark:bg-surface-700 rounded-lg p-3 max-h-48 overflow-y-auto">
-            <pre class="text-xs font-mono">{{ JSON.stringify(node.response, null, 2) }}</pre>
-          </div>
-        </div>
-      </template>
-
-      <!-- Training Queued -->
-      <template v-else-if="'modelName' in node">
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="text-surface-500">Model:</span>
-            <Tag :value="node.modelName" severity="info" />
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-surface-500">Training ID:</span>
-            <code class="text-xs bg-surface-100 dark:bg-surface-700 px-2 py-1 rounded">
-              {{ node.trainingId }}
-            </code>
-          </div>
-        </div>
-      </template>
-
-      <!-- Training Progress -->
-      <template v-else-if="'progressPercentage' in node">
-        <div class="space-y-3">
-          <ProgressBar :value="node.progressPercentage" :show-value="true" />
-          <div class="flex items-center gap-2">
-            <span class="text-surface-500">Training ID:</span>
-            <code class="text-xs bg-surface-100 dark:bg-surface-700 px-2 py-1 rounded">
-              {{ node.trainingId }}
-            </code>
-          </div>
-        </div>
-      </template>
-
-      <!-- Training Finished -->
-      <template v-else-if="'metrics' in node">
-        <div class="space-y-2">
-          <div class="font-medium text-green-600 dark:text-green-400">Training Completed</div>
-          <div class="bg-surface-100 dark:bg-surface-700 rounded-lg p-3">
-            <div class="text-xs font-medium mb-2">Metrics:</div>
-            <div class="grid grid-cols-2 gap-2">
-              <template v-for="(value, key) in node.metrics" :key="key">
-                <div class="text-surface-500">{{ key }}:</div>
-                <div class="font-medium">{{ formatMetricValue(value) }}</div>
-              </template>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Training Started -->
-      <template v-else-if="'trainingId' in node">
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <i class="pi pi-spin pi-spinner text-primary-500" />
-            <span>Training in progress...</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-surface-500">Training ID:</span>
-            <code class="text-xs bg-surface-100 dark:bg-surface-700 px-2 py-1 rounded">
-              {{ node.trainingId }}
-            </code>
-          </div>
-        </div>
-      </template>
-
-      <!-- Failure -->
-      <template v-else-if="'errorMessage' in node">
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <Tag :value="node.reason" severity="danger" />
-          </div>
-          <div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg p-3">
-            {{ node.errorMessage }}
-          </div>
-        </div>
-      </template>
-
-      <!-- Agent Subconclusion -->
-      <template v-else-if="'researchSteps' in node">
-        <div class="space-y-4">
-          <!-- Key Insight - Most prominent -->
-          <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-lg">
-            <div class="flex items-center gap-2 mb-2">
-              <i class="pi pi-star-fill text-amber-500" />
-              <span class="font-semibold text-amber-700 dark:text-amber-300">Key Insight</span>
-            </div>
-            <p class="text-amber-900 dark:text-amber-100 font-medium">{{ node.keyInsight }}</p>
-          </div>
-
-          <!-- Summary -->
-          <div class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-3 rounded-r-lg">
-            <div class="flex items-center gap-2 mb-1">
-              <i class="pi pi-lightbulb text-yellow-500" />
-              <span class="font-semibold text-yellow-700 dark:text-yellow-300">Summary</span>
-            </div>
-            <p class="text-sm text-yellow-800 dark:text-yellow-200">{{ node.summary }}</p>
-          </div>
-
-          <!-- Details -->
-          <div v-if="node.details" class="bg-surface-100 dark:bg-surface-700 rounded-lg p-3">
-            <div class="text-xs font-medium text-surface-500 mb-2">Details</div>
-            <pre class="whitespace-pre-wrap font-sans text-sm text-surface-700 dark:text-surface-300">{{ node.details }}</pre>
-          </div>
-
-          <!-- Research Steps Timeline -->
-          <div v-if="node.researchSteps.length > 0">
-            <div class="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-3 flex items-center gap-2">
-              <i class="pi pi-list text-primary-500" />
-              Research Steps ({{ node.researchSteps.length }})
-            </div>
-
-            <Accordion :multiple="true" class="research-steps-accordion">
+      <template v-else-if="node.rawNode.nodeType === 'PLAN'">
+        <section class="space-y-3">
+          <h4 class="font-semibold">Research Plan</h4>
+          <div class="text-sm"><span class="font-medium">Goal:</span> {{ asString(planPayload?.goal) }}</div>
+          <div class="text-sm"><span class="font-medium">Total Complexity:</span> {{ asString(planPayload?.totalComplexity) }}</div>
+          <div v-if="Array.isArray(planPayload?.branches)">
+            <div class="font-medium mb-1">Branches</div>
+            <Accordion :multiple="true">
               <AccordionPanel
-                  v-for="(step, index) in node.researchSteps"
-                  :key="index"
-                  :value="index.toString()"
+                v-for="(branch, index) in (planPayload?.branches as Array<Record<string, unknown>>)"
+                :key="String(branch.branchId ?? index)"
+                :value="index.toString()"
               >
                 <AccordionHeader>
-                  <div class="flex items-center gap-3 w-full">
-                    <!-- Step number -->
-                    <div class="w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                      {{ index + 1 }}
-                    </div>
-                    <!-- Observation as header -->
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-0.5">
-                        <i class="pi pi-eye text-green-500 text-xs" />
-                        <span class="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Observation</span>
-                      </div>
-                      <p class="text-sm text-surface-700 dark:text-surface-300 truncate">{{ step.observation }}</p>
-                    </div>
+                  <div class="flex items-center gap-2">
+                    <Tag :value="asString(branch.priority)" severity="info" />
+                    <span class="font-medium">{{ asString(branch.branchId) }}</span>
+                    <span class="text-xs text-surface-500">Complexity {{ asString(branch.complexity) }}</span>
                   </div>
                 </AccordionHeader>
                 <AccordionContent>
-                  <div class="space-y-3 pt-2">
-                    <!-- Reasoning -->
-                    <div class="bg-purple-50/50 dark:bg-purple-900/10 rounded-lg p-3">
-                      <div class="flex items-center gap-2 mb-1">
-                        <i class="pi pi-brain text-purple-500 text-sm" />
-                        <span class="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Reasoning</span>
-                      </div>
-                      <p class="text-sm text-surface-700 dark:text-surface-300">{{ step.reasoning }}</p>
-                    </div>
-
-                    <!-- Action -->
-                    <div class="bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-3">
-                      <div class="flex items-center gap-2 mb-1">
-                        <i class="pi pi-bolt text-blue-500 text-sm" />
-                        <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Action</span>
-                      </div>
-                      <p class="text-sm text-surface-700 dark:text-surface-300 font-mono">{{ step.action }}</p>
-                    </div>
-
-                    <!-- Full Observation -->
-                    <div class="bg-green-50/50 dark:bg-green-900/10 rounded-lg p-3">
-                      <div class="flex items-center gap-2 mb-1">
-                        <i class="pi pi-eye text-green-500 text-sm" />
-                        <span class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">Full Observation</span>
-                      </div>
-                      <p class="text-sm text-surface-700 dark:text-surface-300">{{ step.observation }}</p>
-                    </div>
-                  </div>
+                  <div class="text-sm mb-2">{{ asString(branch.goal) }}</div>
+                  <ul class="list-disc pl-5 text-sm">
+                    <li
+                      v-for="(step, sIdx) in asArray(branch.steps)"
+                      :key="sIdx"
+                    >
+                      {{ asString((step as Record<string, unknown>).stepId) }}: {{ asString((step as Record<string, unknown>).objective) }}
+                    </li>
+                  </ul>
                 </AccordionContent>
               </AccordionPanel>
             </Accordion>
           </div>
-
-          <!-- Conversation ID -->
-          <div class="flex items-center gap-2 text-xs pt-2 border-t border-surface-200 dark:border-surface-600">
-            <i class="pi pi-tag text-surface-400" />
-            <span class="text-surface-500">Conversation ID:</span>
-            <code class="bg-surface-100 dark:bg-surface-700 px-2 py-1 rounded font-mono">
-              {{ node.conversationId }}
-            </code>
-          </div>
-        </div>
+        </section>
       </template>
 
-      <!-- Forked -->
-      <template v-else-if="'forkPointId' in node">
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <i class="pi pi-share-alt text-teal-500" />
-            <span class="font-medium text-teal-600 dark:text-teal-400">Conversation Forked</span>
+      <template v-else-if="node.rawNode.nodeType === 'STEP'">
+        <section class="space-y-3">
+          <h4 class="font-semibold">Step Result</h4>
+          <div class="bg-amber-50 dark:bg-amber-900/20 rounded p-3">
+            <div class="font-medium mb-1">Key Insight</div>
+            <div class="text-sm">{{ asString(stepPayload?.keyInsight) }}</div>
           </div>
-          <div class="bg-teal-50 dark:bg-teal-900/20 rounded-lg p-3 space-y-2">
-            <div><span class="text-surface-500">Reason:</span> {{ node.reason }}</div>
-            <div v-if="node.furtherInstructions">
-              <span class="text-surface-500">Instructions:</span>
-              <p class="mt-1 text-sm">{{ node.furtherInstructions }}</p>
-            </div>
+          <div class="text-sm"><span class="font-medium">Summary:</span> {{ asString(stepPayload?.summary) }}</div>
+          <div class="text-sm whitespace-pre-wrap"><span class="font-medium">Details:</span> {{ asString(stepPayload?.details) }}</div>
+          <div v-if="Array.isArray(stepPayload?.researchActions)">
+            <div class="font-medium mb-1">Research Actions</div>
+            <Accordion :multiple="true">
+              <AccordionPanel
+                v-for="(action, index) in (stepPayload?.researchActions as Array<Record<string, unknown>>)"
+                :key="index"
+                :value="index.toString()"
+              >
+                <AccordionHeader>#{{ index + 1 }} {{ asString(action.action) }}</AccordionHeader>
+                <AccordionContent>
+                  <div class="text-sm"><span class="font-medium">Reasoning:</span> {{ asString(action.reasoning) }}</div>
+                  <div class="text-sm"><span class="font-medium">Observation:</span> {{ asString(action.observation) }}</div>
+                </AccordionContent>
+              </AccordionPanel>
+            </Accordion>
           </div>
-          <div class="flex items-center gap-2 text-xs">
-            <span class="text-surface-500">Fork Point ID:</span>
-            <code class="bg-surface-100 dark:bg-surface-700 px-2 py-1 rounded">
-              {{ node.forkPointId }}
-            </code>
-          </div>
-        </div>
+        </section>
       </template>
 
-      <!-- Temporary (In Progress) -->
-      <template v-else-if="'inProgressContent' in node">
-        <div class="space-y-2">
-          <div class="flex items-center gap-2 mb-2">
-            <i class="pi pi-spin pi-spinner text-primary-500" />
-            <span class="font-medium text-primary-600 dark:text-primary-400">Generating Response...</span>
+      <template v-else-if="node.rawNode.nodeType === 'BRANCH'">
+        <section class="space-y-3">
+          <h4 class="font-semibold">Branch Result</h4>
+          <div class="text-sm"><span class="font-medium">Goal:</span> {{ asString(branchPayload?.goal) }}</div>
+          <div class="text-sm whitespace-pre-wrap"><span class="font-medium">Summary:</span> {{ asString(branchPayload?.branchSummary) }}</div>
+          <div>
+            <div class="font-medium mb-1">Key Insights</div>
+            <ul class="list-disc pl-5 text-sm">
+              <li v-for="(item, i) in asStringArray(branchPayload?.keyInsights)" :key="i">{{ item }}</li>
+            </ul>
           </div>
-          <div class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg p-4">
-            <div class="max-h-96 overflow-y-auto">
-              <pre class="whitespace-pre-wrap font-sans text-sm text-primary-900 dark:text-primary-100">{{ node.inProgressContent }}</pre>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 text-xs text-primary-500 dark:text-primary-400 mt-2">
-            <i class="pi pi-info-circle" />
-            <span>This content is being streamed in real-time</span>
-          </div>
-        </div>
+        </section>
       </template>
-    </div>
+
+      <template v-else-if="node.rawNode.nodeType === 'ANALYSIS'">
+        <section class="space-y-3">
+          <h4 class="font-semibold">Final Analysis</h4>
+          <div class="bg-green-50 dark:bg-green-900/20 rounded p-3 text-sm whitespace-pre-wrap">
+            {{ asString(analysisPayload?.mainConclusion) }}
+          </div>
+          <div class="text-sm"><span class="font-medium">Confidence:</span> {{ asString(analysisPayload?.confidence) }}</div>
+          <div>
+            <div class="font-medium mb-1">Supporting Evidence</div>
+            <ul class="list-disc pl-5 text-sm">
+              <li
+                v-for="(evidence, i) in asArray(analysisPayload?.supportingEvidence)"
+                :key="i"
+              >
+                {{ asString((evidence as Record<string, unknown>).sourceBranch) }}: {{ asString((evidence as Record<string, unknown>).finding) }}
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-medium mb-1">Gaps</div>
+            <ul class="list-disc pl-5 text-sm">
+              <li
+                v-for="(gap, i) in asArray(analysisPayload?.gaps)"
+                :key="i"
+              >
+                {{ asString((gap as Record<string, unknown>).description) }}
+              </li>
+            </ul>
+          </div>
+        </section>
+      </template>
+
+      <div class="bg-surface-100 dark:bg-surface-700 rounded p-3">
+        <div class="text-xs font-medium text-surface-500 mb-1">Raw Response</div>
+        <pre class="text-xs whitespace-pre-wrap">{{ node.rawNode.rawResponse }}</pre>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { ChatNode } from '~/types/schemas'
 import Tag from 'primevue/tag'
-import ProgressBar from 'primevue/progressbar'
 import Accordion from 'primevue/accordion'
 import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionContent from 'primevue/accordioncontent'
+import type { ResearchTreeNode } from '~/types/research-tree'
 
 const props = defineProps<{
-  node: ChatNode
+  node: ResearchTreeNode
+  liveText?: string
+  snapshot?: string
 }>()
 
-const headerClass = computed(() => {
-  if ('sender' in props.node) {
-    switch (props.node.sender) {
-      case 'USER': return 'bg-blue-100 text-blue-600'
-      case 'ASSISTANT': return 'bg-purple-100 text-purple-600'
-      case 'SYSTEM': return 'bg-surface-200 text-surface-600'
-    }
+const statusSeverity = computed(() => {
+  switch (props.node.status) {
+    case 'COMPLETED':
+      return 'success'
+    case 'FAILED':
+      return 'danger'
+    default:
+      return 'info'
   }
-  if ('description' in props.node && 'response' in props.node) return 'bg-amber-100 text-amber-600'
-  if ('modelName' in props.node) return 'bg-cyan-100 text-cyan-600'
-  if ('progressPercentage' in props.node) return 'bg-primary-100 text-primary-600'
-  if ('metrics' in props.node) return 'bg-green-100 text-green-600'
-  if ('trainingId' in props.node) return 'bg-indigo-100 text-indigo-600'
-  if ('errorMessage' in props.node) return 'bg-red-100 text-red-600'
-  if ('researchSteps' in props.node) return 'bg-yellow-100 text-yellow-600'
-  if ('forkPointId' in props.node) return 'bg-teal-100 text-teal-600'
-  if ('inProgressContent' in props.node) return 'bg-primary-100 text-primary-600'
-  return 'bg-surface-100 text-surface-600'
 })
 
-const headerIcon = computed(() => {
-  if ('sender' in props.node) {
-    switch (props.node.sender) {
-      case 'USER': return 'pi pi-user'
-      case 'ASSISTANT': return 'pi pi-android'
-      case 'SYSTEM': return 'pi pi-cog'
-    }
-  }
-  if ('description' in props.node && 'response' in props.node) return 'pi pi-wrench'
-  if ('modelName' in props.node) return 'pi pi-clock'
-  if ('progressPercentage' in props.node) return 'pi pi-chart-line'
-  if ('metrics' in props.node) return 'pi pi-check-circle'
-  if ('trainingId' in props.node) return 'pi pi-play'
-  if ('errorMessage' in props.node) return 'pi pi-times-circle'
-  if ('researchSteps' in props.node) return 'pi pi-lightbulb'
-  if ('forkPointId' in props.node) return 'pi pi-share-alt'
-  if ('inProgressContent' in props.node) return 'pi pi-spin pi-spinner'
-  return 'pi pi-circle'
-})
+const scoutPayload = computed(() => getPayloadObject(props.node))
+const planPayload = computed(() => getPayloadObject(props.node))
+const stepPayload = computed(() => getPayloadObject(props.node))
+const branchPayload = computed(() => getPayloadObject(props.node))
+const analysisPayload = computed(() => getPayloadObject(props.node))
+const liveOutput = computed(() => props.liveText ?? '')
+const hasLiveOutput = computed(() => /\S/.test(liveOutput.value))
+const snapshotText = computed(() => props.snapshot?.trim() ?? '')
 
-const headerTitle = computed(() => {
-  if ('sender' in props.node) {
-    switch (props.node.sender) {
-      case 'USER': return 'User Message'
-      case 'ASSISTANT': return 'Assistant Message'
-      case 'SYSTEM': return 'System Message'
-    }
-  }
-  if ('description' in props.node && 'response' in props.node) return 'Tool Call'
-  if ('modelName' in props.node) return 'Training Queued'
-  if ('progressPercentage' in props.node) return 'Training Progress'
-  if ('metrics' in props.node) return 'Training Finished'
-  if ('trainingId' in props.node) return 'Training Started'
-  if ('errorMessage' in props.node) return 'Failure'
-  if ('researchSteps' in props.node) return 'Agent Conclusion'
-  if ('forkPointId' in props.node) return 'Conversation Forked'
-  if ('inProgressContent' in props.node) return 'Generating Response...'
-  return 'Event'
-})
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleString()
+function getPayloadObject(node: ResearchTreeNode): Record<string, unknown> | null {
+  if (node.rawNode.status !== 'COMPLETED') return null
+  return node.rawNode.payload as Record<string, unknown>
 }
 
-function formatMetricValue(value: unknown): string {
-  if (typeof value === 'number') {
-    return value.toFixed(4)
-  }
+function asString(value: unknown): string {
+  if (value === null || value === undefined) return '-'
   return String(value)
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.map(asString)
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleString()
 }
 </script>

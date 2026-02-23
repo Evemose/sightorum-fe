@@ -1,11 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { z } from 'zod'
 import type {
-  DetectedSchemaResponse,
   DetectionOverride,
-  UploadResponse,
-  ImportJobResponse,
-  PreviewResponse,
   CoercionConfig
 } from '~/types/schemas'
 import {
