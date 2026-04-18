@@ -3,6 +3,35 @@
 :root {
   --app-font-body: 'Manrope', 'Segoe UI', sans-serif;
   --app-font-display: 'Chakra Petch', 'Segoe UI', sans-serif;
+
+  /* Viz palette — light mode (source of truth) */
+  --viz-base: 91 143 168;
+  --viz-base-muted: 143 170 184;
+  --viz-chrome: 156 163 175;
+  --viz-severity-amber: 217 119 6;
+  --viz-severity-muted: 180 148 106;
+  --viz-severity-low: 107 114 128;
+  --viz-focal: 109 40 217;
+  --viz-divergent: 232 93 117;
+  --viz-delta-positive: 217 119 6;
+  --viz-delta-negative: 59 130 246;
+  --viz-error: 220 38 38;
+}
+
+.dark {
+  /* Viz palette — dark mode (mechanically derived via OKLCH in useVizTheme.ts,
+     mirrored here for zero-flash rendering before JS hydration). */
+  --viz-base: 119 165 188;
+  --viz-base-muted: 126 149 162;
+  --viz-chrome: 107 114 128;
+  --viz-severity-amber: 216 127 47;
+  --viz-severity-muted: 173 145 107;
+  --viz-severity-low: 156 163 175;
+  --viz-focal: 183 141 255;
+  --viz-divergent: 232 107 126;
+  --viz-delta-positive: 216 127 47;
+  --viz-delta-negative: 91 156 255;
+  --viz-error: 239 68 68;
 }
 
 html,

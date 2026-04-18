@@ -23,7 +23,12 @@
       "Bash(do echo \"=== $comp ===\")",
       "Bash(done)",
       "Bash(for comp in SwarmNode SwarmNodeDetails)",
-      "Bash(for comp in BaseSchemaTree BaseAttributeNode FlatOverrideEditor HierarchicalOverrideEditor CoercionStrategyPicker DataTypePicker)"
+      "Bash(for comp in BaseSchemaTree BaseAttributeNode FlatOverrideEditor HierarchicalOverrideEditor CoercionStrategyPicker DataTypePicker)",
+      "Bash(npx nuxi:*)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(node -e ':*)",
+      "Bash"
     ]
-  }
+  },
+  "model": "claude-opus-4-6[1m]"
 }

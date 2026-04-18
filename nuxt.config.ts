@@ -8,8 +8,26 @@ export default defineNuxtConfig({
     modules: [
         '@nuxtjs/tailwindcss',
         '@primevue/nuxt-module',
-        '@nuxt/eslint'
+        '@nuxt/eslint',
+        'nuxt-echarts',
     ],
+
+    echarts: {
+        renderer: 'canvas',
+        charts: [
+            'BarChart', 'LineChart', 'PieChart', 'ScatterChart', 'RadarChart',
+            'TreeChart', 'TreemapChart', 'SunburstChart', 'SankeyChart',
+            'BoxplotChart', 'GaugeChart', 'CustomChart', 'ParallelChart',
+            'PictorialBarChart', 'HeatmapChart',
+        ],
+        components: [
+            'TitleComponent', 'TooltipComponent', 'LegendComponent',
+            'GridComponent', 'DataZoomComponent', 'MarkLineComponent',
+            'MarkAreaComponent', 'MarkPointComponent', 'ToolboxComponent',
+            'GraphicComponent', 'CalendarComponent', 'ParallelComponent',
+            'VisualMapComponent', 'DatasetComponent', 'TransformComponent',
+        ],
+    },
 
     css: [
         'primeicons/primeicons.css',
